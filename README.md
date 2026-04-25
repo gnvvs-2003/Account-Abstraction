@@ -116,3 +116,12 @@ Core functions
 1. `validateTransaction` : Called by bootloader, validates the incoming transaction mainly includes verifying signatures and incrementing nonce
 2. `executeTransaction` : After succeessful validation in `validateTransaction` function **Bootloader** calls this function for execution of actual logic defined in the `_transaction` payload
 3. `payForTransaction` : Handles payment of transaction fees
+
+# Core folder structure
+`src/ethereum` : Contains the Ethereum AA implementation
+`src/zksync` : Contains the zkSync AA implementation
+
+# Core objectives
+1. Create basic AA wallet on ethereum 
+2. Create basic AA wallet on zkSync
+3. Deploy these wallets and send a `UserOps` object 
