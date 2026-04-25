@@ -125,3 +125,20 @@ Core functions
 1. Create basic AA wallet on ethereum 
 2. Create basic AA wallet on zkSync
 3. Deploy these wallets and send a `UserOps` object 
+
+## function : validateUserOp/parameter : userOpHash
+The `EntryPoint` contract computes the `userOpHash` and passes to `validateUserOp` method of `IAccount`.This is the hash that the user must sign 
+
+## Signature Validation Rule : Owner based authentication
+For the `MinimalAccount` signatue is valid if it originates from owner of the smart contract account.
+
+For Ownership of smart contract account we will be using `OpenZeppelin` `Ownable` contract
+
+Installing Openzeppelin contracts
+
+```bash
+forge install openzeppelin/openzeppelin-contracts
+```
+
+>For EIP-191 formatting : `MessageHashUtils`
+>For signature recovery : `ECDSA` 
