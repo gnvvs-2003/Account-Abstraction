@@ -79,6 +79,12 @@ If no Paymaster is used, the user's SCW must have sufficient native token balanc
 
 This native approach bypasses the need for a separate **Alt Mempool** and the **EntryPoint.sol** contract, as the core protocol itself is designed to handle programmable account validity.
 
+Account abstraction transactions on zkSync are designed as Type-113
+
+**BootLoader** : During both validation and execution the `msg.sender` to **SCW** will be `BootLoader`  address
+
+**Smart Contract as from Address** : A significant distinction is that in zkSync, the `from` field of a Type 113 transaction can be the address of the **Smart Contract Wallet** itself. This contrasts with Ethereum, where the from field is always an **EOA**
+
 **IMPORTANT** : This default account contract (e.g., DefaultAccount.sol in the matter-labs/era-contracts repository) implements standard interfaces like IAccount and includes functions such as validateTransaction, executeTransaction, and isValidSignature. By default, this contract mimics traditional EOA behavior, validating transactions based on an ECDSA signature from the associated private key. 
 
 However, users or developers can override this default implementation by deploying custom smart contract code to their account address. This custom code can then define any arbitrary validation logic, effectively turning any account into a fully programmable smart contract wallet.
@@ -88,3 +94,25 @@ However, users or developers can override this default implementation by deployi
 2. On chain : The signed transaction is sent to zkSync nodes. These nodes natively understand AA and can directly call the validation logic within the user's account contract.
 3. If valid, the transaction is executed by the user's account contract, and the results are included in a block on the zkSync blockchain.
 
+2. Ethereum Approach to account abstraction (EIP-4337)
+Components of ERC-4337
+1. *EntryPoint* contract
+2. *UserOps*
+3. *Alt mempool*
+4. *Bundler*
+
+### Ethereum AA implementation
+The `MinimalAccount.sol` contract : github.com/Cyfrin/minimal-account-abstraction repo is a basic example for ERC-4337 (i.e Account Abstraction) 
+
+Core functionalities : 
+1. `permit` function : Permits transaction initiation by its owner or the `EntryPoint` contract
+2. `validateUserOp` function : Validates the user operation
+3. `execute` function by `EntryPoint` contract : Executes the user operation
+
+### zkSync AA implementation
+The `ZkMinimalAccount.sol` contract, located in `src/zksync/` of the repository, demonstrates a basic smart contract wallet utilizing zkSync's native AA.
+
+Core functions
+1. `validateTransaction` : Called by bootloader, validates the incoming transaction mainly includes verifying signatures and incrementing nonce
+2. `executeTransaction` : After succeessful validation in `validateTransaction` function **Bootloader** calls this function for execution of actual logic defined in the `_transaction` payload
+3. `payForTransaction` : Handles payment of transaction fees
