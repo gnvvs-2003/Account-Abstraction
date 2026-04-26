@@ -27,7 +27,7 @@ contract MinimalAccount is IAccount, Ownable {
     /**
      * @notice When the contract is deployed this sets the initial owner to msg.sender
      */
-    constructor(address entryPoint) Ownable(msg.sender){
+    constructor(address entryPoint) Ownable(msg.sender) {
         I_ENTRYPOINT = IEntryPoint(entryPoint);
     }
 
@@ -36,23 +36,41 @@ contract MinimalAccount is IAccount, Ownable {
     /// @dev Only EntryPoint can call this function
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
-        requireFromEntryPoint
         view
         override
+        requireFromEntryPoint
         returns (uint256 validationData)
     {
         validationData = _validateSignature(userOp, userOpHash);
-        if(validationData != SIG_VALIDATION_SUCCESS){
+        if (validationData != SIG_VALIDATION_SUCCESS) {
             return validationData;
         }
 
         /**
          * OTHER VALIDATION STEPS
          * _validateNonce(userOp.nonce);
-         * _payPrefund(missingAccountFunds); transferring funds from SCW or paymaster to EntryPoint 
+         * _payPrefund(missingAccountFunds); transferring funds from SCW or paymaster to EntryPoint
          */
-        
+
         return validationData;
+    }
+
+    /// EXTERNAL FUNCTIONS
+    /**
+     *@param destination Destination address (contract address or account address or any application address)
+     *@param value Value to be sent to the destination address
+     *@param functionData Function data to be sent to the destination address
+     *@dev Calls the destination address with the given value and function data.
+     *@dev Only EntryPoint or owner can call this function
+     *@return success Whether the call was successful
+     *@return result The result of the call
+     *@notice This function is invoked by EntryPoint contract after validation phase
+     */
+    function execute(address destination,uint256 value,bytes calldata functionData) external requireFromEntryPointOrOwner(){
+        (bool success,bytes memory result) = destination.call{value:value}(functionData);
+        if(!success){
+            revert MinimalAccount__CallFailed(result);
+        }
     }
 
     /// INTERNAL FUNCTIONS
@@ -67,7 +85,7 @@ contract MinimalAccount is IAccount, Ownable {
      * @custom:Step3 Ownership check : Logic for validation signer address = owner()
      * @notice SIGNATURE IS VALID IF IT IS FROM """MinimalAccount""" OWNER
      */
-    
+
     function _validateSignature(PackedUserOperation calldata userOp, bytes32 userOpHash)
         internal
         view
@@ -78,22 +96,37 @@ contract MinimalAccount is IAccount, Ownable {
         //Recover the signer address from the signature
         address signer = ECDSA.recover(ethSignedMessageHash, userOp.signature);
         // Verify the signer is the owner
-        if(signer == address(0) || signer != owner()){
+        if (signer == address(0) || signer != owner()) {
             return SIG_VALIDATION_FAILED;
         }
         return SIG_VALIDATION_SUCCESS;
     }
+    /// @dev For funding our SCW account via standard transfers
+    /// @notice Executed when ether is sent to the contract address without any calldata
+    receive() external payable {}
 
     /// MODIFIERS
-    modifier requireFromEntryPoint(){
-        if(msg.sender != address(I_ENTRYPOINT)){
+    modifier requireFromEntryPoint() {
+        if (msg.sender != address(I_ENTRYPOINT)) {
             revert MinimalAccount__NotFromEntryPoint();
         }
         _;
     }
+    modifier requireFromEntryPointOrOwner() {
+        // New
+        if (msg.sender != address(i_entryPoint) && msg.sender != owner()) {
+            revert MinimalAccount__NotFromEntryPointOrOwner();
+        }
+        _;
+    }
 
-    /// GETTERS 
-    function getEntryPoint() external view returns(address){
+    /// GETTERS
+    function getEntryPoint() external view returns (address) {
         return address(I_ENTRYPOINT);
     }
+
+    /// ERRORS
+    error MinimalAccount__NotFromEntryPoint();
+    error MinimalAccount__NotFromEntryPointOrOwner();
+    error MinimalAccount__CallFailed(bytes result);
 }
