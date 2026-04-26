@@ -7,6 +7,7 @@ import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {MessageHashUtils} from "lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ECDSA} from "lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstraction/contracts/core/Helpers.sol";
+import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 /**
  * @title MinimalAccount.sol
@@ -19,16 +20,23 @@ import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstrac
  */
 
 contract MinimalAccount is IAccount, Ownable {
+    /// IMMUTABLES
+    IEntryPoint private immutable I_ENTRYPOINT;
+
     /// CONSTRUCTOR
     /**
      * @notice When the contract is deployed this sets the initial owner to msg.sender
      */
-    constructor(address initialOwner) Ownable(initialOwner){}
+    constructor(address entryPoint) Ownable(msg.sender){
+        I_ENTRYPOINT = IEntryPoint(entryPoint);
+    }
 
     /// INHERITED FUNCTIONS
     /// @dev Validates the UserOp object according to the IAccount interface specification.
+    /// @dev Only EntryPoint can call this function
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
+        requireFromEntryPoint
         view
         override
         returns (uint256 validationData)
@@ -74,5 +82,18 @@ contract MinimalAccount is IAccount, Ownable {
             return SIG_VALIDATION_FAILED;
         }
         return SIG_VALIDATION_SUCCESS;
+    }
+
+    /// MODIFIERS
+    modifier requireFromEntryPoint(){
+        if(msg.sender != address(I_ENTRYPOINT)){
+            revert MinimalAccount__NotFromEntryPoint();
+        }
+        _;
+    }
+
+    /// GETTERS 
+    function getEntryPoint() external view returns(address){
+        return address(I_ENTRYPOINT);
     }
 }
